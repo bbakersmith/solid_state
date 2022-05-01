@@ -99,13 +99,12 @@ def get_transformations(scad_obj, path, transformations = None):
         "translate",
     }
 
-    # TODO here and in test i think we can just check scad_obj.name
-    if type(scad_obj).__name__ in transformation_types:
-        transformations.insert(0, scad_obj)
+    if scad_obj.name in transformation_types:
+        transformations = [scad_obj, *transformations]
 
     for child in scad_obj.children:
-        transformations = get_transformations(child, path, transformations)
-        if transformations is not None:
-            return transformations
+        new_transformations = get_transformations(child, path, transformations)
+        if new_transformations is not None:
+            return new_transformations
 
     return None

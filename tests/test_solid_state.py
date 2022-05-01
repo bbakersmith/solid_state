@@ -133,13 +133,13 @@ def test_get_transformations():
     for path in ["my-cube", "my-parent.my-cube"]:
         result = solid_state.get_transformations(obj, path)
 
-        assert type(result[0]).__name__ == "translate"
-        assert type(result[1]).__name__ == "rotate"
-        assert type(result[2]).__name__ == "color"
-        assert type(result[3]).__name__ == "mirror"
-        assert type(result[4]).__name__ == "rotate"
-
         assert len(result) == 5
+
+        assert result[0].name == "translate"
+        assert result[1].name == "rotate"
+        assert result[2].name == "color"
+        assert result[3].name == "mirror"
+        assert result[4].name == "rotate"
 
         assert result[0].params["v"] == [1, 2, 3]
         assert result[1].params["a"] == [45, 90, 180]
@@ -151,8 +151,8 @@ def test_get_transformations():
 
     assert len(parent_result) == 2
 
-    assert type(parent_result[0]).__name__ == "mirror"
-    assert type(parent_result[1]).__name__ == "rotate"
+    assert parent_result[0].name == "mirror"
+    assert parent_result[1].name == "rotate"
 
     assert parent_result[0].params["v"] == [1, 0, 0]
     assert parent_result[1].params["a"] == [90, 0, 0]
@@ -161,11 +161,11 @@ def test_get_transformations():
 
     # import pdb; pdb.set_trace()
 
-    assert type(sphere_result[0]).__name__ == "color"
-    assert type(sphere_result[1]).__name__ == "mirror"
-    assert type(sphere_result[2]).__name__ == "rotate"
-
     assert len(sphere_result) == 3
+
+    assert sphere_result[0].name == "color"
+    assert sphere_result[1].name == "mirror"
+    assert sphere_result[2].name == "rotate"
 
     assert sphere_result[0].params["c"] == "blue"
     assert sphere_result[1].params["v"] == [1, 0, 0]
