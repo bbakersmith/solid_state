@@ -4,6 +4,65 @@ import solid
 import solid_state.solid_state as solid_state
 
 
+def test_pipe():
+    result = solid_state.pipe(
+        5,
+        lambda x: x + 3,
+        lambda y: y * 10,
+        lambda z: z / 4,
+    )
+
+    assert result == 20
+
+
+def test_pipe_solid():
+    obj = solid_state.pipe(
+        solid.cube(5),
+        solid.rotate([15, 30, 45]),
+        solid.translate([1, 2, 3]),
+    )
+
+    assert obj.name == "translate"
+
+    assert len(obj.children) == 1
+    assert obj.children[0].name == "rotate"
+
+    assert len(obj.children[0].children) == 1
+    assert obj.children[0].children[0].name == "cube"
+
+    assert len(obj.children[0].children[0].children) == 0
+
+
+def test_compose():
+    composed = solid_state.compose(
+        lambda x: x + 3,
+        lambda y: y * 10,
+        lambda z: z / 4,
+    )
+
+    assert composed(5) == 20
+    assert composed(7) == 25
+
+
+def test_compose_solid():
+    composed = solid_state.compose(
+        solid.rotate([15, 30, 45]),
+        solid.translate([1, 2, 3]),
+    )
+
+    obj = composed(solid.cube(5))
+
+    assert obj.name == "translate"
+
+    assert len(obj.children) == 1
+    assert obj.children[0].name == "rotate"
+
+    assert len(obj.children[0].children) == 1
+    assert obj.children[0].children[0].name == "cube"
+
+    assert len(obj.children[0].children[0].children) == 0
+
+
 def test_save_state():
     obj = solid.cube(5)
     result = solid_state.save_state("my-cube")(obj)
@@ -14,9 +73,35 @@ def test_save_state():
     assert state.get("attributes") == {}
 
 
+def test_state_decorator():
+    @solid_state.state("my-cube")
+    def create_my_cube():
+        return solid.cube(5)
+
+    result = create_my_cube()
+
+    state = result.get_trait("solid_state")
+    assert state is not None
+    assert state.get("name") == "my-cube"
+    assert state.get("attributes") == {}
+
+
 def test_save_state_attributes():
     obj = solid.cube(5)
     result = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(obj)
+
+    state = result.get_trait("solid_state")
+    assert state is not None
+    assert state.get("name") == "my-cube"
+    assert state.get("attributes") == dict(alpha=1, beta=2)
+
+
+def test_state_decorator_attributes():
+    @solid_state.state("my-cube", dict(alpha=1, beta=2))
+    def create_my_cube():
+        return solid.cube(5)
+
+    result = create_my_cube()
 
     state = result.get_trait("solid_state")
     assert state is not None
@@ -51,11 +136,15 @@ def test_get_objects():
 def test_get_objects_by_path():
     obj1a = solid_state.save_state("my-cube")(solid.cube(5))
     obj1b = solid_state.save_state("my-sphere")(solid.sphere(5))
-    parent1 = solid_state.save_state("parent-1")(solid.translate([1, 2, 3])(obj1a + obj1b))
+    parent1 = solid_state.save_state("parent-1")(
+        solid.translate([1, 2, 3])(obj1a + obj1b)
+    )
 
     obj2a = solid_state.save_state("my-cube")(solid.cube(5))
     obj2b = solid_state.save_state("my-cube")(solid.cube(5))
-    parent2 = solid_state.save_state("parent-2")(solid.translate([4, 5, 6])(obj2a + obj2b))
+    parent2 = solid_state.save_state("parent-2")(
+        solid.translate([4, 5, 6])(obj2a + obj2b)
+    )
 
     combined = parent1 + parent2
 
@@ -159,8 +248,6 @@ def test_get_transformations():
 
     sphere_result = solid_state.get_transformations(obj, "my-sphere")
 
-    # import pdb; pdb.set_trace()
-
     assert len(sphere_result) == 3
 
     assert sphere_result[0].name == "color"
@@ -172,9 +259,6 @@ def test_get_transformations():
     assert sphere_result[2].params["a"] == [90, 0, 0]
 
 
-
 # TODO test
 # - transform_like
 # - render_states
-# - pipe
-# - compose

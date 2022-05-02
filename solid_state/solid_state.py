@@ -4,7 +4,17 @@ def pipe(target, *fns):
     return target
 
 
-def save_state(name, attributes = None):
+def compose(*fns):
+    def _compose(x):
+        for fn in fns:
+            x = fn(x)
+
+        return x
+
+    return _compose
+
+
+def save_state(name, attributes=None):
     """
     Add solid_state metadata to an object.
     """
@@ -14,7 +24,23 @@ def save_state(name, attributes = None):
     def _save_state(scad_obj):
         scad_obj.add_trait("solid_state", dict(name=name, attributes=attributes))
         return scad_obj
+
     return _save_state
+
+
+def state(name, attributes=None):
+    """
+    Add solid_state metadata to an object returned from the decorated function.
+    """
+
+    def _state_decorator(func):
+        def _state(*args, **kwargs):
+            scad_obj = func(*args, **kwargs)
+            return save_state(name, attributes)(scad_obj)
+
+        return _state
+
+    return _state_decorator
 
 
 def get_name(scad_obj):
@@ -30,7 +56,7 @@ def get_name(scad_obj):
 # TODO instead of building up list of objs directly,
 # build up objs and any transformations found on the path to them.
 # return like... {"objs": [], "transformations": []}
-def get_objects(scad_obj, path, objs = None):
+def get_objects(scad_obj, path, objs=None):
     """
     Get all objects with the given solid_state name.
     """
@@ -75,7 +101,7 @@ def get_attributes(scad_obj, name):
 
 
 # TODO DRY with get_objects
-def get_transformations(scad_obj, path, transformations = None):
+def get_transformations(scad_obj, path, transformations=None):
     """
     Get all transformations that were made after the named state.
     """
