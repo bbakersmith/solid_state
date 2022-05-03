@@ -1,11 +1,26 @@
 import pytest
 import solid
 
-import solid_state.solid_state as solid_state
+from solid_state.solid_state import (
+    Path,
+    Query,
+    Term,
+    compose,
+    get_attributes,
+    get_name,
+    get_node_paths,
+    get_object,
+    get_objects,
+    get_transformations,
+    parse_path,
+    pipe,
+    save_state,
+    state,
+)
 
 
 def test_pipe():
-    result = solid_state.pipe(
+    result = pipe(
         5,
         lambda x: x + 3,
         lambda y: y * 10,
@@ -16,7 +31,7 @@ def test_pipe():
 
 
 def test_pipe_solid():
-    obj = solid_state.pipe(
+    obj = pipe(
         solid.cube(5),
         solid.rotate([15, 30, 45]),
         solid.translate([1, 2, 3]),
@@ -34,7 +49,7 @@ def test_pipe_solid():
 
 
 def test_compose():
-    composed = solid_state.compose(
+    composed = compose(
         lambda x: x + 3,
         lambda y: y * 10,
         lambda z: z / 4,
@@ -45,7 +60,7 @@ def test_compose():
 
 
 def test_compose_solid():
-    composed = solid_state.compose(
+    composed = compose(
         solid.rotate([15, 30, 45]),
         solid.translate([1, 2, 3]),
     )
@@ -65,162 +80,158 @@ def test_compose_solid():
 
 def test_save_state():
     obj = solid.cube(5)
-    result = solid_state.save_state("my-cube")(obj)
+    result = save_state("my-cube")(obj)
 
-    state = result.get_trait("solid_state")
-    assert state is not None
-    assert state.get("name") == "my-cube"
-    assert state.get("attributes") == {}
+    meta = result.get_trait("solid_state")
+    assert meta is not None
+    assert meta.get("name") == "my-cube"
+    assert meta.get("attributes") == {}
 
 
 def test_state_decorator():
-    @solid_state.state("my-cube")
+    @state("my-cube")
     def create_my_cube():
         return solid.cube(5)
 
     result = create_my_cube()
 
-    state = result.get_trait("solid_state")
-    assert state is not None
-    assert state.get("name") == "my-cube"
-    assert state.get("attributes") == {}
+    meta = result.get_trait("solid_state")
+    assert meta is not None
+    assert meta.get("name") == "my-cube"
+    assert meta.get("attributes") == {}
 
 
 def test_save_state_attributes():
     obj = solid.cube(5)
-    result = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(obj)
+    result = save_state("my-cube", dict(alpha=1, beta=2))(obj)
 
-    state = result.get_trait("solid_state")
-    assert state is not None
-    assert state.get("name") == "my-cube"
-    assert state.get("attributes") == dict(alpha=1, beta=2)
+    meta = result.get_trait("solid_state")
+    assert meta is not None
+    assert meta.get("name") == "my-cube"
+    assert meta.get("attributes") == dict(alpha=1, beta=2)
 
 
 def test_state_decorator_attributes():
-    @solid_state.state("my-cube", dict(alpha=1, beta=2))
+    @state("my-cube", dict(alpha=1, beta=2))
     def create_my_cube():
         return solid.cube(5)
 
     result = create_my_cube()
 
-    state = result.get_trait("solid_state")
-    assert state is not None
-    assert state.get("name") == "my-cube"
-    assert state.get("attributes") == dict(alpha=1, beta=2)
+    meta = result.get_trait("solid_state")
+    assert meta is not None
+    assert meta.get("name") == "my-cube"
+    assert meta.get("attributes") == dict(alpha=1, beta=2)
 
 
 def test_get_name():
-    obj1 = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
-    obj2 = solid_state.save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
+    obj1 = save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
+    obj2 = save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
 
-    assert solid_state.get_name(obj1) == "my-cube"
-    assert solid_state.get_name(obj2) == "my-sphere"
+    assert get_name(obj1) == "my-cube"
+    assert get_name(obj2) == "my-sphere"
 
 
 def test_get_objects():
-    obj1 = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
-    obj2 = solid_state.save_state("my-sphere", dict(alpha=3, beta=4))(solid.sphere(5))
-    obj3 = solid_state.save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
+    obj1 = save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
+    obj2 = save_state("my-sphere", dict(alpha=3, beta=4))(solid.sphere(5))
+    obj3 = save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
     combined = obj1 + obj2 + obj3
 
-    res1 = solid_state.get_objects(combined, "my-cube")
-    res2 = solid_state.get_objects(combined, "my-sphere")
+    res1 = get_objects(combined, "my-cube")
+    res2 = get_objects(combined, "my-sphere")
 
     assert len(res1) == 1
     assert len(res2) == 2
-    assert solid_state.get_name(res1[0]) == "my-cube"
-    assert solid_state.get_name(res2[0]) == "my-sphere"
-    assert solid_state.get_name(res2[1]) == "my-sphere"
+    assert get_name(res1[0]) == "my-cube"
+    assert get_name(res2[0]) == "my-sphere"
+    assert get_name(res2[1]) == "my-sphere"
 
 
 def test_get_objects_by_path():
-    obj1a = solid_state.save_state("my-cube")(solid.cube(5))
-    obj1b = solid_state.save_state("my-sphere")(solid.sphere(5))
-    parent1 = solid_state.save_state("parent-1")(
-        solid.translate([1, 2, 3])(obj1a + obj1b)
-    )
+    obj1a = save_state("my-cube")(solid.cube(5))
+    obj1b = save_state("my-sphere")(solid.sphere(5))
+    parent1 = save_state("parent-1")(solid.translate([1, 2, 3])(obj1a + obj1b))
 
-    obj2a = solid_state.save_state("my-cube")(solid.cube(5))
-    obj2b = solid_state.save_state("my-cube")(solid.cube(5))
-    parent2 = solid_state.save_state("parent-2")(
-        solid.translate([4, 5, 6])(obj2a + obj2b)
-    )
+    obj2a = save_state("my-cube")(solid.cube(5))
+    obj2b = save_state("my-cube")(solid.cube(5))
+    parent2 = save_state("parent-2")(solid.translate([4, 5, 6])(obj2a + obj2b))
 
     combined = parent1 + parent2
 
-    res1 = solid_state.get_objects(combined, "parent-1.my-cube")
-    res2 = solid_state.get_objects(combined, "parent-2.my-cube")
+    res1 = get_objects(combined, "parent-1.my-cube")
+    res2 = get_objects(combined, "parent-2.my-cube")
 
     assert len(res1) == 1
     assert len(res2) == 2
-    assert solid_state.get_name(res1[0]) == "my-cube"
-    assert solid_state.get_name(res2[0]) == "my-cube"
-    assert solid_state.get_name(res2[1]) == "my-cube"
+    assert get_name(res1[0]) == "my-cube"
+    assert get_name(res2[0]) == "my-cube"
+    assert get_name(res2[1]) == "my-cube"
 
 
 def test_get_object():
-    obj1 = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
-    obj2 = solid_state.save_state("my-sphere", dict(alpha=3, beta=4))(solid.sphere(5))
-    obj3 = solid_state.save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
+    obj1 = save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
+    obj2 = save_state("my-sphere", dict(alpha=3, beta=4))(solid.sphere(5))
+    obj3 = save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
     combined = obj1 + obj2 + obj3
 
-    res1 = solid_state.get_object(combined, "my-cube")
+    res1 = get_object(combined, "my-cube")
 
     with pytest.raises(Exception):
-        solid_state.get_object(combined, "my-sphere")
+        get_object(combined, "my-sphere")
 
     with pytest.raises(Exception):
-        solid_state.get_object(combined, "my-other-thing")
+        get_object(combined, "my-other-thing")
 
-    assert solid_state.get_name(res1) == "my-cube"
+    assert get_name(res1) == "my-cube"
 
 
 def test_get_attributes():
-    obj1 = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
-    obj2 = solid_state.save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
+    obj1 = save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
+    obj2 = save_state("my-sphere", dict(alpha=7, beta=9))(solid.sphere(5))
     combined = obj1 + obj2
 
-    assert solid_state.get_attributes(combined, "my-cube").get("alpha") == 1
-    assert solid_state.get_attributes(combined, "my-cube").get("beta") == 2
-    assert solid_state.get_attributes(combined, "my-sphere").get("alpha") == 7
-    assert solid_state.get_attributes(combined, "my-sphere").get("beta") == 9
+    assert get_attributes(combined, "my-cube").get("alpha") == 1
+    assert get_attributes(combined, "my-cube").get("beta") == 2
+    assert get_attributes(combined, "my-sphere").get("alpha") == 7
+    assert get_attributes(combined, "my-sphere").get("beta") == 9
 
 
 def test_get_attributes_by_path():
-    obj1 = solid_state.save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
-    parent1 = solid_state.save_state("parent-1")(solid.translate([1, 2, 3])(obj1))
+    obj1 = save_state("my-cube", dict(alpha=1, beta=2))(solid.cube(5))
+    parent1 = save_state("parent-1")(solid.translate([1, 2, 3])(obj1))
 
-    obj2 = solid_state.save_state("my-cube", dict(alpha=7, beta=9))(solid.cube(5))
-    parent2 = solid_state.save_state("parent-2")(solid.translate([4, 5, 6])(obj2))
+    obj2 = save_state("my-cube", dict(alpha=7, beta=9))(solid.cube(5))
+    parent2 = save_state("parent-2")(solid.translate([4, 5, 6])(obj2))
 
     combined = parent1 + parent2
 
-    assert solid_state.get_attributes(combined, "parent-1.my-cube").get("alpha") == 1
-    assert solid_state.get_attributes(combined, "parent-1.my-cube").get("beta") == 2
-    assert solid_state.get_attributes(combined, "parent-2.my-cube").get("alpha") == 7
-    assert solid_state.get_attributes(combined, "parent-2.my-cube").get("beta") == 9
+    assert get_attributes(combined, "parent-1.my-cube").get("alpha") == 1
+    assert get_attributes(combined, "parent-1.my-cube").get("beta") == 2
+    assert get_attributes(combined, "parent-2.my-cube").get("alpha") == 7
+    assert get_attributes(combined, "parent-2.my-cube").get("beta") == 9
 
 
 def test_get_transformations():
     obj = solid.cube(5)
     obj = solid.scale(5)(obj)
-    obj = solid_state.save_state("my-cube")(obj)
+    obj = save_state("my-cube")(obj)
     obj = solid.translate([1, 2, 3])(obj)
     obj = solid.rotate([45, 90, 180])(obj)
     obj = solid.color("red")(obj)
 
     obj2 = solid.sphere(5)
-    obj2 = solid_state.save_state("my-sphere")(obj2)
+    obj2 = save_state("my-sphere")(obj2)
     obj2 = solid.color("blue")(obj2)
 
     obj += obj2
 
-    obj = solid_state.save_state("my-parent")(obj)
+    obj = save_state("my-parent")(obj)
     obj = solid.mirror([1, 0, 0])(obj)
     obj = solid.rotate([90, 0, 0])(obj)
 
     for path in ["my-cube", "my-parent.my-cube"]:
-        result = solid_state.get_transformations(obj, path)
+        result = get_transformations(obj, path)
 
         assert len(result) == 5
 
@@ -236,7 +247,7 @@ def test_get_transformations():
         assert result[3].params["v"] == [1, 0, 0]
         assert result[4].params["a"] == [90, 0, 0]
 
-    parent_result = solid_state.get_transformations(obj, "my-parent")
+    parent_result = get_transformations(obj, "my-parent")
 
     assert len(parent_result) == 2
 
@@ -246,7 +257,7 @@ def test_get_transformations():
     assert parent_result[0].params["v"] == [1, 0, 0]
     assert parent_result[1].params["a"] == [90, 0, 0]
 
-    sphere_result = solid_state.get_transformations(obj, "my-sphere")
+    sphere_result = get_transformations(obj, "my-sphere")
 
     assert len(sphere_result) == 3
 
@@ -260,27 +271,30 @@ def test_get_transformations():
 
 
 def test_parse_path():
-    assert solid_state.parse_path("foo") == [[dict(obj_name="foo", state_name=None)]]
-    assert solid_state.parse_path(".bar") == [[dict(obj_name=None, state_name="bar")]]
-    assert solid_state.parse_path("foo.bar") == [[dict(obj_name="foo", state_name="bar")]]
-    assert solid_state.parse_path("foo bar") == [
-        [dict(obj_name="foo", state_name=None), dict(obj_name="bar", state_name=None)]
-    ]
-    assert solid_state.parse_path(".foo .bar") == [
-        [dict(obj_name=None, state_name="foo"), dict(obj_name=None, state_name="bar")]
-    ]
-    assert solid_state.parse_path(".foo .bar zig.baz zag") == [
-        [
-            dict(obj_name=None, state_name="foo"),
-            dict(obj_name=None, state_name="bar"),
-            dict(obj_name="zig", state_name="baz"),
-            dict(obj_name="zag", state_name=None),
-        ]
-    ]
-    assert solid_state.parse_path("foo.bar, .baz zig") == [
-        [dict(obj_name="foo", state_name="bar")],
-        [dict(obj_name=None, state_name="baz"), dict(obj_name="zig", state_name=None)],
-    ]
+    assert parse_path("foo") == Query([Path([Term(obj_name="foo")])])
+    assert parse_path(".bar") == Query([Path([Term(state_name="bar")])])
+    assert parse_path("foo.bar") == Query([
+        Path([Term(obj_name="foo", state_name="bar")])
+    ])
+    assert parse_path("foo bar") == Query([
+        Path([Term(obj_name="foo"), Term(obj_name="bar")])
+    ])
+    assert parse_path(".foo .bar") == Query([
+        Path([Term(state_name="foo"), Term(state_name="bar")])
+    ])
+    assert parse_path(".foo .bar zig.baz zag") == Query([
+        Path([
+            Term(state_name="foo"),
+            Term(state_name="bar"),
+            Term(obj_name="zig", state_name="baz"),
+            Term(obj_name="zag")
+        ])
+    ])
+    assert parse_path("foo.bar, .baz zig") == Query([
+        Path([Term(obj_name="foo", state_name="bar")]),
+        Path([Term(state_name="baz"), Term(obj_name="zig")]),
+    ])
+
 
 # def test_get_node_paths():
 #     class DummyNode:
@@ -298,17 +312,17 @@ def test_parse_path():
 #         DummyNode("charlie", []),
 #     ])
 #
-#     assert solid_state.get_node_paths(tree, "alpha") == [()]
-#     assert solid_state.get_node_paths(tree, "beta") == [(0,)]
-#     assert solid_state.get_node_paths(tree, "charlie") == [(1,)]
-#     assert solid_state.get_node_paths(tree, "delta") == [(0, 0)]
-#     assert solid_state.get_node_paths(tree, "epsilon") == [(0, 1)]
-#     assert solid_state.get_node_paths(tree, "fark") == [(0, 1, 0)]
+#     assert get_node_paths(tree, "alpha") == [()]
+#     assert get_node_paths(tree, "beta") == [(0,)]
+#     assert get_node_paths(tree, "charlie") == [(1,)]
+#     assert get_node_paths(tree, "delta") == [(0, 0)]
+#     assert get_node_paths(tree, "epsilon") == [(0, 1)]
+#     assert get_node_paths(tree, "fark") == [(0, 1, 0)]
 
 
 def test_get_complex_node_paths():
     class DummyNode:
-        def __init__(self, node_type = "generic", children = None):
+        def __init__(self, node_type="generic", children=None):
             if children is None:
                 children = []
 
@@ -320,27 +334,40 @@ def test_get_complex_node_paths():
             return self.traits.get(trait)
 
     class DummyState(DummyNode):
-        def __init__(self, name, children = None, node_type = "generic"):
+        def __init__(self, name, children=None, node_type="generic"):
             super().__init__(node_type, children)
             self.traits["solid_state"] = dict(name=name, attributes={})
 
-    tree = DummyState("alpha", [
-        DummyState("beta", [
-            DummyState("other", [DummyState("thing", [])]),
-            DummyState("thing", [DummyState("other", [])]),
-        ]),
-        DummyState("charlie", [
-            DummyState("thing", [DummyState("other", [])]),
-            DummyState("other", [DummyState("thing", [])]),
-        ]),
-    ])
+    tree = DummyState(
+        "alpha",
+        [
+            DummyState(
+                "beta",
+                [
+                    DummyState("other", [DummyState("thing", [])]),
+                    DummyState("thing", [DummyState("other", [])]),
+                ],
+            ),
+            DummyState(
+                "charlie",
+                [
+                    DummyState("thing", [DummyState("other", [])]),
+                    DummyState("other", [DummyState("thing", [])]),
+                ],
+            ),
+        ],
+    )
 
-    assert solid_state.get_node_paths(tree, "thing") == [(0, 0, 0), (0, 1), (1, 0), (1, 1, 0)]
-    assert solid_state.get_node_paths(tree, "beta.other") == [(0, 0), (0, 1, 0)]
-    assert solid_state.get_node_paths(tree, "charlie.other") == [(1, 0, 0), (1, 1)]
-    assert solid_state.get_node_paths(tree, "charlie.thing.other") == [(1, 0, 0)]
-    assert solid_state.get_node_paths(tree, "charlie.other.thing") == [(1, 1, 0)]
-
+    assert get_node_paths(tree, "thing") == [
+        (0, 0, 0),
+        (0, 1),
+        (1, 0),
+        (1, 1, 0),
+    ]
+    assert get_node_paths(tree, "beta.other") == [(0, 0), (0, 1, 0)]
+    assert get_node_paths(tree, "charlie.other") == [(1, 0, 0), (1, 1)]
+    assert get_node_paths(tree, "charlie.thing.other") == [(1, 0, 0)]
+    assert get_node_paths(tree, "charlie.other.thing") == [(1, 1, 0)]
 
     # TODO start building out more complete css syntax support...
     # plan these features ahead, they don't need to be implemented all at once,

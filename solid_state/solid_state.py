@@ -173,26 +173,7 @@ def get_node_paths(scad_obj, selector, path = (), results = None):
     return results
 
 
-def parse_term(term):
-    parts = term.split(".")
-
-    if 2 < len(parts):
-        raise ValueError("Only one . per path term is allowed.")
-
-    return dict(
-        obj_name=parts[0] if parts[0] != "" else None,
-        state_name=parts[1] if len(parts) == 2 else None,
-    )
-
-
-def parse_query(query):
-    return [parse_term(term.strip()) for term in query.split(" ")]
-
-
-def parse_path(path):
-    return [parse_query(query.strip()) for query in path.split(",")]
-
-
+# TODO move to own module
 import parsimonious
 path_grammar = parsimonious.Grammar(
     r"""
@@ -204,44 +185,41 @@ path_grammar = parsimonious.Grammar(
         state_name = state_indicator name
         obj_name = ~"[A-Za-z0-9_]+"
         name = ~"[A-Za-z0-9_]+"
-        path_separator = ~", ?"
+        path_separator = "," " "?
         term_separator = " "
         state_indicator = "."
     """
 )
 
 
-# @dataclass
-# class Term:
-#     obj_name: Optional[str] = None
-#     state_name: Optional[str] = None
-#
-#
-# @dataclass
-# class Path:
-#     terms: list[Term]
-#
-#
-# @dataclass
-# class Query:
-#     paths: list[Path]
+@dataclass
+class Term:
+    obj_name: Optional[str] = None
+    state_name: Optional[str] = None
+
+
+@dataclass
+class Path:
+    terms: list[Term]
+
+
+@dataclass
+class Query:
+    paths: list[Path]
 
 
 class PathVisitor(parsimonious.NodeVisitor):
     def visit_query(self, node, visited_children):
-        return {"query": visited_children}
+        return Query(visited_children)
 
     def visit_path(self, node, visited_children):
-        return {"terms": visited_children[0]}
+        return Path(visited_children[0])
 
     def visit_term(self, node, visited_children):
-        return visited_children[0][0]
+        return Term(**visited_children[0][0])
 
     def visit_term_pair(self, node, visited_children):
-        output = {}
-        output.update(visited_children[0])
-        output.update(visited_children[1])
-        return output
+        return {**visited_children[0], **visited_children[1]}
 
     def visit_state_name(self, node, visited_children):
         return dict(state_name=visited_children[1])
@@ -256,10 +234,8 @@ class PathVisitor(parsimonious.NodeVisitor):
         return visited_children or node
 
 
-pv = PathVisitor()
-# result = pv.visit(path_grammar.parse("foo.bar baz"))
-result = pv.visit(path_grammar.parse("foo.bar baz, zig.zag .alpha"))
-print(f"RESULT: {result}")
+def parse_path(query):
+    return PathVisitor().visit(path_grammar.parse(query))
 
 
 # print(1)
