@@ -259,6 +259,100 @@ def test_get_transformations():
     assert sphere_result[2].params["a"] == [90, 0, 0]
 
 
+def test_parse_path():
+    assert solid_state.parse_path("foo") == [[dict(obj_name="foo", state_name=None)]]
+    assert solid_state.parse_path(".bar") == [[dict(obj_name=None, state_name="bar")]]
+    assert solid_state.parse_path("foo.bar") == [[dict(obj_name="foo", state_name="bar")]]
+    assert solid_state.parse_path("foo bar") == [
+        [dict(obj_name="foo", state_name=None), dict(obj_name="bar", state_name=None)]
+    ]
+    assert solid_state.parse_path(".foo .bar") == [
+        [dict(obj_name=None, state_name="foo"), dict(obj_name=None, state_name="bar")]
+    ]
+    assert solid_state.parse_path(".foo .bar zig.baz zag") == [
+        [
+            dict(obj_name=None, state_name="foo"),
+            dict(obj_name=None, state_name="bar"),
+            dict(obj_name="zig", state_name="baz"),
+            dict(obj_name="zag", state_name=None),
+        ]
+    ]
+    assert solid_state.parse_path("foo.bar, .baz zig") == [
+        [dict(obj_name="foo", state_name="bar")],
+        [dict(obj_name=None, state_name="baz"), dict(obj_name="zig", state_name=None)],
+    ]
+
+# def test_get_node_paths():
+#     class DummyNode:
+#         def __init__(self, name, children):
+#             self.name = name
+#             self.children = children
+#
+#     tree = DummyNode("alpha", [
+#         DummyNode("beta", [
+#             DummyNode("delta", []),
+#             DummyNode("epsilon", [
+#                 DummyNode("fark", []),
+#             ]),
+#         ]),
+#         DummyNode("charlie", []),
+#     ])
+#
+#     assert solid_state.get_node_paths(tree, "alpha") == [()]
+#     assert solid_state.get_node_paths(tree, "beta") == [(0,)]
+#     assert solid_state.get_node_paths(tree, "charlie") == [(1,)]
+#     assert solid_state.get_node_paths(tree, "delta") == [(0, 0)]
+#     assert solid_state.get_node_paths(tree, "epsilon") == [(0, 1)]
+#     assert solid_state.get_node_paths(tree, "fark") == [(0, 1, 0)]
+
+
+def test_get_complex_node_paths():
+    class DummyNode:
+        def __init__(self, node_type = "generic", children = None):
+            if children is None:
+                children = []
+
+            self.name = node_type
+            self.children = children
+            self.traits = {}
+
+        def get_trait(self, trait):
+            return self.traits.get(trait)
+
+    class DummyState(DummyNode):
+        def __init__(self, name, children = None, node_type = "generic"):
+            super().__init__(node_type, children)
+            self.traits["solid_state"] = dict(name=name, attributes={})
+
+    tree = DummyState("alpha", [
+        DummyState("beta", [
+            DummyState("other", [DummyState("thing", [])]),
+            DummyState("thing", [DummyState("other", [])]),
+        ]),
+        DummyState("charlie", [
+            DummyState("thing", [DummyState("other", [])]),
+            DummyState("other", [DummyState("thing", [])]),
+        ]),
+    ])
+
+    assert solid_state.get_node_paths(tree, "thing") == [(0, 0, 0), (0, 1), (1, 0), (1, 1, 0)]
+    assert solid_state.get_node_paths(tree, "beta.other") == [(0, 0), (0, 1, 0)]
+    assert solid_state.get_node_paths(tree, "charlie.other") == [(1, 0, 0), (1, 1)]
+    assert solid_state.get_node_paths(tree, "charlie.thing.other") == [(1, 0, 0)]
+    assert solid_state.get_node_paths(tree, "charlie.other.thing") == [(1, 1, 0)]
+
+
+    # TODO start building out more complete css syntax support...
+    # plan these features ahead, they don't need to be implemented all at once,
+    # but the list of reserved characters does.
+    #
+    # ".charlie .other .thing"
+    # "cube.thing, sphere.thing"
+
+
 # TODO test
+# - join
 # - transform_like
 # - render_states
+# - a full on css style selector language?
+#   ex. "#my_state#other_state.rotate.cube"

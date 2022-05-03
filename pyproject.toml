@@ -6,6 +6,7 @@ authors = ["Ben Baker-Smith <bbakersmith@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+parsimonious = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
