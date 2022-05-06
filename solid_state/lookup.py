@@ -1,5 +1,6 @@
 import solid
 
+import solid_state.solid_state
 import solid_state.query
 
 
@@ -64,17 +65,19 @@ def get_object(scad_obj, query):
 
     num_objects = len(objects)
     if num_objects != 1:
-        raise Exception(f"{num_objects} matches found for query when 1 was expected")
+        raise Exception(f"{num_objects} matches found for query '{query}' when 1 was expected")
 
     return objects[0]
 
 
-def get_attributes(scad_obj, query):
+def get_attributes(scad_obj, query = None):
     """
     Get solid_state attributes of an object with the given name.
     """
-    obj = get_object(scad_obj, query)
-    return obj.get_trait("solid_state").get("attributes")
+    if query is not None:
+        scad_obj = get_object(scad_obj, query)
+
+    return scad_obj.get_trait("solid_state").get("attributes")
 
 
 # TODO
@@ -108,3 +111,11 @@ def get_transformations(scad_obj, query):
         results.append(transformations)
 
     return results
+
+
+def transform_like(scad_obj, query):
+    transformations = get_transformations(scad_obj, query)
+    if len(transformations) != 1:
+        raise Exception(f"{len(transformations)} matches found for query '{query}' when 1 was expected")
+
+    return solid_state.solid_state.compose(*transformations[0])

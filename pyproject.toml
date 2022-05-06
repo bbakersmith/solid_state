@@ -2,7 +2,7 @@
 name = "solid_state"
 version = "0.1.0"
 description = ""
-authors = ["Ben Baker-Smith <bbakersmith@gmail.com>"]
+authors = ["Ben Baker-Smith <contact@bitsynthesis.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

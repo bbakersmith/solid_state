@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-
-from solid_state.lookup import get_name
+import inspect
 
 
 def pipe(target, *fns):
@@ -41,16 +40,43 @@ def save_state(name, attributes=None):
 
 
 # TODO store wrapped function's arguments in attributes or another meta key?
-def state(name, attributes=None):
+def state(name):
     """
     Add solid_state metadata to an object returned from the decorated function.
     """
 
-    def _state_decorator(func):
-        def _state(*args, **kwargs):
+    def _state(func):
+        def _wrapper(*args, **kwargs):
             scad_obj = func(*args, **kwargs)
-            return save_state(name, attributes)(scad_obj)
 
-        return _state
+            attributes = {}
 
-    return _state_decorator
+            # TODO probably need to do more to support splat args
+
+            sig = inspect.signature(func)
+
+            for i, [k, param] in enumerate(sig.parameters.items()):
+                if i < len(args):
+                    attributes[k] = args[i]
+
+                else:
+                    attributes[k] = param.default
+
+            attributes.update(kwargs)
+
+            # argspec = inspect.getfullargspec(func)
+            # import pdb;pdb.set_trace()
+            #
+            # for i, arg_name in enumerate(argspec.args):
+            #     if i < len(args):
+            #         attributes[arg_name] = args[i]
+            #     else:
+            #         attributes[arg_name] = argspec.defaults[i]
+            #
+            # attributes.update(kwargs)
+
+            return save_state(name=name, attributes=attributes)(scad_obj)
+
+        return _wrapper
+
+    return _state
