@@ -9,6 +9,9 @@ from .lookup import(
     get_transformations,
     transform_like,
 )
+from .render import (
+    render_scad
+)
 from .solid_state import (
     compose,
     join,

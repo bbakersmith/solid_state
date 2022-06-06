@@ -79,4 +79,4 @@ scene = create_spiral_snowmen()
 #     scene += create_top_hat(snowman)
 
 
-scad_render_to_file(scene, "snowmen.scad")
+# scad_render_to_file(scene, "snowmen.scad")

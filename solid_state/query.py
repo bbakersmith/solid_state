@@ -4,6 +4,10 @@ from typing import Optional
 import parsimonious
 
 
+# TODO support some form of array index notation
+# - if want to stick wtih css could use :nth-of-type(<i>), goofy as it is
+
+
 grammar = parsimonious.Grammar(
     r"""
         query = path+

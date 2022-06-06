@@ -42,6 +42,7 @@ def _get_paths_for_query(scad_obj, query_string):
     return paths
 
 
+# TODO raise exception for no matching objects? or at least a warning?
 def get_objects(scad_obj, query):
     paths = _get_paths_for_query(scad_obj, query)
 

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import inspect
 
+import solid
+
 
 def pipe(target, *fns):
     for fn in fns:
@@ -33,8 +35,14 @@ def save_state(name, attributes=None):
         attributes = {}
 
     def _save_state(scad_obj):
-        scad_obj.add_trait("solid_state", dict(name=name, attributes=attributes))
-        return scad_obj
+        # The union + operator replaces the current union with a new one
+        # with additional children, which wipes out any state metadata
+        # present on that union. Here we wrap the state in a no-op
+        # translate object to avoid this issue. There may be a better no-op
+        # object.
+        wrapper_obj = solid.translate([0, 0, 0])(scad_obj)
+        wrapper_obj.add_trait("solid_state", dict(name=name, attributes=attributes))
+        return wrapper_obj
 
     return _save_state
 
@@ -44,7 +52,6 @@ def state(name):
     """
     Add solid_state metadata to an object returned from the decorated function.
     """
-
     def _state(func):
         def _wrapper(*args, **kwargs):
             scad_obj = func(*args, **kwargs)
