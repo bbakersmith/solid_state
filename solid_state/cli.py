@@ -8,6 +8,30 @@ import solid
 import solid_state
 
 
+def parse_target_args(target, raw):
+    """
+    Convert a list of string arguments in form "key=value" to a dictionary.
+    Coerce
+    """
+    annotations = target.__annotations__
+
+    args = {}
+    for a in raw:
+        k, v = a.split("=")
+
+        arg_type = annotations.get(k, str)
+        if arg_type == int:
+            v = int(v)
+        elif arg_type == float:
+            v = float(v)
+        else:
+            pass # default to string
+
+        args[k] = v
+
+    return args
+
+
 @click.command()
 # TODO use package.module:function syntax instead
 @click.argument("target") # TODO better name for target, and make it an option again
@@ -38,12 +62,7 @@ def main(target, module, output, selector, colorize, color_scheme, transform, ar
         target_object = target_var
 
     elif isinstance(target_var, types.FunctionType):
-        args = {}
-        for a in arg:
-            k, v = a.split("=")
-            args[k] = v
-
-        target_object = target_var(**args)
+        target_object = target_var(**parse_target_args(target_var, args))
 
         if not isinstance(target_object, solid.OpenSCADObject):
             raise ValueError(
